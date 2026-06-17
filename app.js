@@ -100,9 +100,11 @@ function buildDataIndexes() {
 }
 
 function renderDomainFilters() {
-  const domains = [...new Set(datasets.map((dataset) => dataset.domain))].sort();
+  const domains = [...new Set(datasets.flatMap((dataset) => getDatasetDomains(dataset)))].sort();
   const domainCounts = datasets.reduce((counts, dataset) => {
-    counts.set(dataset.domain, (counts.get(dataset.domain) || 0) + 1);
+    getDatasetDomains(dataset).forEach((domain) => {
+      counts.set(domain, (counts.get(domain) || 0) + 1);
+    });
     return counts;
   }, new Map());
 
@@ -121,6 +123,14 @@ function renderDomainFilters() {
       `
     )
     .join("");
+}
+
+function getDatasetDomains(dataset) {
+  return Array.isArray(dataset.domains) && dataset.domains.length ? dataset.domains : [dataset.domain].filter(Boolean);
+}
+
+function getDatasetDomainLabel(dataset) {
+  return getDatasetDomains(dataset).join(" / ");
 }
 
 function bindEvents() {
@@ -380,7 +390,7 @@ function renderDatasetSummaryTiles(dataset, variables) {
     </div>
     <div class="summary-tile">
       <span>Domein</span>
-      <strong>${dataset.domain}</strong>
+      <strong>${getDatasetDomainLabel(dataset)}</strong>
       <small>${dataset.title}</small>
     </div>
   `;
@@ -562,7 +572,7 @@ function renderVariableOccurrences(selectedDataset, variables) {
             .map(
               (dataset) => `
                 <button type="button" class="related-item" data-id="${dataset.id}">
-                  <span>${dataset.domain}</span>
+                  <span>${getDatasetDomainLabel(dataset)}</span>
                   <strong>${dataset.title}</strong>
                   <small>${dataset.subtitle}</small>
                 </button>
@@ -653,7 +663,7 @@ function getKeywordText(dataset) {
   const parts = [
     dataset.title,
     dataset.subtitle,
-    dataset.domain,
+    ...getDatasetDomains(dataset),
     dataset.bestandsonderwerp || "",
     dataset.description || "",
     dataset.themes.join(" "),
@@ -716,7 +726,7 @@ function renderRelatedDatasets(selectedDataset, contextDatasets) {
       .map(
         (dataset) => `
           <button type="button" class="related-item" data-id="${dataset.id}">
-            <span>${dataset.domain}</span>
+            <span>${getDatasetDomainLabel(dataset)}</span>
             <strong>${dataset.title}</strong>
             <small>${dataset.subtitle}</small>
           </button>
@@ -899,7 +909,7 @@ function renderCompareSlot(slot, chosen, selectedIds) {
             const alreadySelected = selectedIds.includes(dataset.id) && dataset.id !== currentId;
             return `
               <option value="${dataset.id}" ${dataset.id === currentId ? "selected" : ""} ${alreadySelected ? "disabled" : ""}>
-                ${dataset.title} - ${dataset.domain} - ${dataset.bestandsonderwerp || "geen onderwerp gekoppeld"}
+                ${dataset.title} - ${getDatasetDomainLabel(dataset)} - ${dataset.bestandsonderwerp || "geen onderwerp gekoppeld"}
               </option>
             `;
           })
@@ -958,7 +968,7 @@ function getComparisonSummary(selected) {
   const populationKinds = new Set(populations);
   const subjects = selected.map((dataset) => normalizeCompareText(getDatasetSubject(dataset))).filter(Boolean);
   const subjectKinds = new Set(subjects);
-  const domains = new Set(selected.map((dataset) => dataset.domain));
+  const domains = new Set(selected.flatMap((dataset) => getDatasetDomains(dataset)));
   const domainList = [...domains];
 
   return {
@@ -1058,7 +1068,8 @@ function renderCompareMatrix(selected, comparison) {
 }
 
 function getCompareMatrixRows(selected, comparison) {
-  const domainFrequency = getFrequencyMap(selected.map((dataset) => dataset.domain));
+  const domainLabels = selected.map((dataset) => getDatasetDomainLabel(dataset));
+  const domainFrequency = getFrequencyMap(domainLabels);
   const subjectFrequency = getFrequencyMap(selected.map((dataset) => getDatasetSubject(dataset)));
   const populationTexts = selected.map((dataset) => getComparePopulation(dataset));
   const populationTextFrequency = getFrequencyMap(populationTexts);
@@ -1078,9 +1089,9 @@ function getCompareMatrixRows(selected, comparison) {
     {
       label: "Domein",
       help: "Past de vergelijking binnen hetzelfde CBS-domein?",
-      values: selected.map((dataset) => ({
-        text: dataset.domain,
-        tone: getExactGroupedCellTone(dataset.domain, domainFrequency)
+      values: selected.map((dataset, index) => ({
+        text: domainLabels[index],
+        tone: getExactGroupedCellTone(domainLabels[index], domainFrequency)
       }))
     },
     {
@@ -1394,7 +1405,7 @@ function shortenCompareText(text, maxLength) {
 function getRelationScore(base, candidate) {
   if (base.id === candidate.id) return 99;
   let score = 0;
-  if (base.domain === candidate.domain) score += 2;
+  if (getDatasetDomains(base).some((domain) => getDatasetDomains(candidate).includes(domain))) score += 2;
   score += overlapCount(base.themes, candidate.themes) * 2;
   score += overlapCount(base.variables, candidate.variables);
   if (base.periodEnd && candidate.periodEnd && Math.abs(base.periodEnd - candidate.periodEnd) <= 2) score += 1;
@@ -1460,7 +1471,7 @@ function renderGuideResults() {
           <div class="rank">${index + 1}</div>
           <div>
             <div class="card-topline">
-              <span>${dataset.domain}</span>
+              <span>${getDatasetDomainLabel(dataset)}</span>
               <span>${index === 0 ? "Aanbevolen" : `Optie ${index + 1}`}</span>
             </div>
             <h3>${dataset.title}</h3>
@@ -1889,7 +1900,7 @@ function getFilteredDatasets() {
     .map((dataset) => ({ ...dataset, score: getRelevanceScore(dataset, query) }))
     .filter((dataset) => {
       const matchesSearch = !query || dataset.score > 0;
-      const matchesDomain = state.domains.size === 0 || state.domains.has(dataset.domain);
+      const matchesDomain = state.domains.size === 0 || getDatasetDomains(dataset).some((domain) => state.domains.has(domain));
       const matchesKnownPeriod = !state.knownPeriod || (dataset.periodStart > 0 && dataset.periodEnd > 0);
       const matchesRecent = !state.recent || dataset.periodEnd >= 2023;
       const matchesLongPeriod = !state.longPeriod || dataset.periodEnd - dataset.periodStart >= 15;
@@ -1908,7 +1919,7 @@ function createDatasetSearchDocument(dataset, variables = getDatasetVariables(da
     [dataset.title, 11],
     [dataset.subtitle, 9],
     [dataset.bestandsonderwerp || "", 8],
-    [dataset.domain, 6],
+    [getDatasetDomainLabel(dataset), 6],
     [dataset.description, 6],
     [dataset.pdfDescription || "", 4],
     [dataset.pdfPopulation || "", 4],
@@ -1924,14 +1935,14 @@ function createDatasetSearchDocument(dataset, variables = getDatasetVariables(da
       dataset.title,
       dataset.subtitle,
       dataset.bestandsonderwerp || "",
-      dataset.domain,
+      getDatasetDomainLabel(dataset),
       dataset.description,
       dataset.pdfDescription || "",
       dataset.pdfPopulation || "",
       (dataset.pdfVariables || []).join(" ")
     ].join(" "));
   const keywordText = normalizeSearchText(getKeywordText(dataset));
-  const domainText = normalizeSearchText(dataset.domain);
+  const domainText = normalizeSearchText(getDatasetDomainLabel(dataset));
 
   return {
     normalizedFields: weightedValues.map(([value, weight]) => {
@@ -1947,7 +1958,7 @@ function createDatasetSearchDocument(dataset, variables = getDatasetVariables(da
     domainTokens: tokenizeSearchText(domainText),
     suggestionValues: [
       dataset.bestandsonderwerp || "",
-      dataset.domain,
+      getDatasetDomainLabel(dataset),
       dataset.subtitle,
       ...dataset.themes,
       ...dataset.variables,
@@ -2263,7 +2274,7 @@ function getCatalogSuggestions(query) {
 
 function sortDatasets(a, b) {
   if (state.sort === "title") return a.title.localeCompare(b.title, "nl");
-  if (state.sort === "domain") return a.domain.localeCompare(b.domain, "nl") || a.title.localeCompare(b.title, "nl");
+  if (state.sort === "domain") return getDatasetDomainLabel(a).localeCompare(getDatasetDomainLabel(b), "nl") || a.title.localeCompare(b.title, "nl");
   return b.score - a.score || a.title.localeCompare(b.title, "nl");
 }
 
@@ -2337,7 +2348,7 @@ function renderDatasetList(filtered) {
         <article class="dataset-card ${dataset.id === state.selectedId ? "selected" : ""}">
           <button type="button" data-id="${dataset.id}" class="card-button">
             <div class="card-topline">
-              <span>${dataset.domain}</span>
+              <span>${getDatasetDomainLabel(dataset)}</span>
               <span>${dataset.years}</span>
             </div>
             <h3>${dataset.title}</h3>
@@ -2533,7 +2544,7 @@ function shortenCatalogPreview(text) {
 }
 
 function getPdfBrief(dataset) {
-  const source = dataset.pdfDescription || "";
+  const source = dataset.pdfDescription || dataset.pdfSummary || "";
   if (!source.trim()) return "";
 
   const cleaned = source
@@ -2578,7 +2589,7 @@ function renderDetail(dataset) {
 
   els.detailPanel.innerHTML = `
     <div class="detail-heading">
-      <p>${dataset.domain}</p>
+      <p>${getDatasetDomainLabel(dataset)}</p>
       <h2>${dataset.title}</h2>
       <span>${dataset.subtitle}</span>
     </div>
@@ -2604,7 +2615,7 @@ function renderDetail(dataset) {
         </div>
         <div>
           <dt>Domein</dt>
-          <dd>${dataset.domain}</dd>
+          <dd>${getDatasetDomainLabel(dataset)}</dd>
         </div>
         <div>
           <dt>Bron in prototype</dt>
