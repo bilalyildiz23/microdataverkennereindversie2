@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="nl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Microdata Verkenner | SZW ASEA prototype</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Ministerie van Sociale Zaken en Werkgelegenheid</p>
+        <h1>Microdata Verkenner</h1>
+      </div>
+      <div class="status-pill">
+        <span id="resultCount">0</span>
+        <span>datasets gevonden</span>
+      </div>
+    </header>
+
+    <nav class="view-tabs" aria-label="Hoofdnavigatie">
+      <button class="tab active" type="button" data-view="guideView">Vraagverkenner</button>
+      <button class="tab" type="button" data-view="catalogView">Catalogus</button>
+      <button class="tab" type="button" data-view="exploreView">Variabelen</button>
+      <button class="tab" type="button" data-view="compareView">Vergelijken</button>
+    </nav>
+
+    <main>
+      <section id="guideView" class="view active">
+        <div class="guide-layout">
+          <section class="guide-hero">
+            <div>
+              <p class="eyebrow">Startpunt voor beleid en nieuwkomers</p>
+              <h2>Van beleidsvraag naar mogelijke microdatabestanden</h2>
+              <p>Deze pagina helpt u om een beleidsvraag concreet en compleet te maken en passende microdatabestanden als startpunt te vinden.</p>
+            </div>
+            <div id="guideStageQuestion" class="guide-search guide-stage-control is-active">
+              <div class="guide-stage-heading">
+                <span>1</span>
+                <div>
+                  <h3>Formuleer uw beleidsvraag</h3>
+                  <p>Noem zo mogelijk doelgroep, onderwerp en periode.</p>
+                </div>
+              </div>
+              <label for="guideInput">Uw beleidsvraag</label>
+              <div class="search-row">
+                <input
+                  id="guideInput"
+                  type="search"
+                  placeholder="Bijvoorbeeld: bijstand en werk sinds 2020"
+                  autocomplete="off"
+                />
+                <button id="guideSearchButton" type="button">Zoek</button>
+              </div>
+              <button id="resetGuideSearch" class="link-button" type="button">Reset vraag</button>
+            </div>
+          </section>
+
+          <details class="example-panel">
+            <summary>Voorbeeldvragen tonen</summary>
+            <div class="starter-grid" aria-label="Voorbeeldvragen">
+              <button type="button" class="starter-card" data-question="Welke data is er over bijstand en uitkeringsbedragen vanaf 2020?">
+                <span>Bijstand en bedragen</span>
+                <strong>Welke data is er over bijstand en uitkeringsbedragen vanaf 2020?</strong>
+              </button>
+              <button type="button" class="starter-card" data-question="Welke data is er over re-integratietrajecten en werk?">
+                <span>Arbeidsparticipatie</span>
+                <strong>Welke data is er over re-integratietrajecten en werk?</strong>
+              </button>
+              <button type="button" class="starter-card" data-question="Welke bestanden helpen bij inkomenspositie van huishoudens?">
+                <span>Inkomen</span>
+                <strong>Welke bestanden helpen bij inkomenspositie van huishoudens?</strong>
+              </button>
+            </div>
+          </details>
+
+          <section class="guide-results">
+            <section id="guideStageCompass" class="guide-stage is-pending" aria-labelledby="guideCompassTitle">
+              <div class="guide-stage-heading">
+                <span>2</span>
+                <div>
+                  <h2 id="guideCompassTitle">Controleer de herkende onderdelen</h2>
+                  <p>Bekijk of onderwerp, doelgroep en periode goed uit de vraag zijn gehaald.</p>
+                </div>
+              </div>
+              <div id="questionCompass" class="question-compass"></div>
+            </section>
+
+            <section id="guideStageResults" class="guide-stage is-pending" aria-labelledby="guideResultsTitle">
+              <div class="section-heading">
+                <div class="guide-stage-heading">
+                  <span>3</span>
+                  <div>
+                    <h2 id="guideResultsTitle">Bekijk mogelijke startpunten</h2>
+                    <p id="guideSummary">Typ een vraag om startpunten te vinden.</p>
+                  </div>
+                </div>
+                <button id="openCatalogFromGuide" type="button">Open resultaten in catalogus</button>
+              </div>
+              <div id="guideResultList" class="guide-result-list"></div>
+              <div id="guideResultControls" class="guide-result-controls"></div>
+            </section>
+          </section>
+        </div>
+      </section>
+
+      <section id="catalogView" class="view">
+        <div class="layout">
+          <section class="search-panel" aria-label="Zoeken">
+            <div class="question-card">
+              <label for="searchInput">Zoek in catalogusmetadata</label>
+              <div class="search-row">
+                <input
+                  id="searchInput"
+                  type="search"
+                  placeholder="Bijvoorbeeld: bijstand, re-integratie, onderwijs, inkomen..."
+                  autocomplete="off"
+                />
+                <button id="clearSearch" type="button" aria-label="Zoekveld leegmaken">x</button>
+              </div>
+              <div id="transferredSearchNotice" class="transferred-search-notice" hidden>
+                <div>
+                  <span>Overgenomen uit Vraagverkenner</span>
+                  <strong id="transferredSearchQuery"></strong>
+                </div>
+                <button id="clearTransferredSearch" type="button">Wis vraag</button>
+              </div>
+              <div id="suggestions" class="suggestions" aria-label="Zoeksuggesties"></div>
+            </div>
+          </section>
+
+          <aside class="filters" aria-label="Filters">
+            <div class="filter-header">
+              <div>
+                <h2>Verfijn resultaten</h2>
+                <p>Filter op domein en beschikbare periode</p>
+              </div>
+              <button id="resetFilters" type="button">Wis</button>
+            </div>
+
+            <fieldset class="filter-group domain-filter-group">
+              <legend>
+                <span>Domein</span>
+                <small id="domainFilterCount"></small>
+              </legend>
+              <div id="domainFilters" class="filter-options domain-options"></div>
+            </fieldset>
+
+            <fieldset class="filter-group">
+              <legend>
+                <span>Beschikbare periode</span>
+              </legend>
+              <label class="check-row">
+                <input type="checkbox" value="known" id="knownPeriodFilter" />
+                <span class="filter-label">Periode bekend</span>
+              </label>
+              <label class="check-row">
+                <input type="checkbox" value="recent" id="recentFilter" />
+                <span class="filter-label">Bevat 2023 of later</span>
+              </label>
+              <label class="check-row">
+                <input type="checkbox" value="long" id="longPeriodFilter" />
+                <span class="filter-label">Lange tijdreeks (15+ jaar)</span>
+              </label>
+            </fieldset>
+
+          </aside>
+
+          <section class="results" aria-label="Datasetresultaten">
+            <div class="results-toolbar">
+              <div>
+                <h2>Relevante microdatabestanden</h2>
+                <p id="activeSummary">Gebruik zoeken en filters om de lijst te verfijnen.</p>
+              </div>
+              <select id="sortSelect" aria-label="Resultaten sorteren">
+                <option value="relevance">Beste match</option>
+                <option value="title">Titel A-Z</option>
+                <option value="domain">Domein</option>
+              </select>
+            </div>
+            <div id="datasetList" class="dataset-list"></div>
+          </section>
+
+          <aside class="detail" aria-label="Datasetdetail">
+            <div id="detailPanel" class="detail-panel"></div>
+          </aside>
+        </div>
+      </section>
+
+      <section id="exploreView" class="view">
+        <div class="explore-layout">
+          <section class="explore-intro">
+            <div>
+              <p class="eyebrow">Dataset verkennen</p>
+              <h2>Bekijk variabelen en periode van het geselecteerde bestand</h2>
+              <p id="insightContext">
+                Selecteer een dataset in de catalogus om variabelen en beschikbare jaren te bekijken.
+              </p>
+            </div>
+            <button id="resetExploreContext" type="button">Reset bestand</button>
+          </section>
+
+          <section class="insights-panel" aria-label="Orienterende visualisaties">
+            <div class="insight-card">
+              <div class="insight-heading">
+                <h2>Bestand in het kort</h2>
+                <p>Aantal variabelen, domein en beschikbare periode.</p>
+              </div>
+              <div id="domainTreemap" class="treemap"></div>
+            </div>
+            <div class="insight-card">
+              <div class="insight-heading">
+                <h2>Variabelen uit de metadata-PDF</h2>
+                <p>Klik op een variabele om te zien waar deze nog meer voorkomt.</p>
+              </div>
+              <div id="wordCloud" class="word-cloud"></div>
+            </div>
+          </section>
+
+          <section class="insights-panel secondary-insights" aria-label="Verdieping op selectie">
+            <div class="insight-card">
+              <div class="insight-heading">
+                <h2>Periodecheck</h2>
+                <p>Start, eind, lengte en type periode uit de metadata.</p>
+              </div>
+              <div id="termBars" class="term-bars"></div>
+            </div>
+            <div class="insight-card">
+              <div class="insight-heading">
+                <h2>Variabele komt ook voor in</h2>
+                <p>Gerelateerd op basis van dezelfde variabelenaam.</p>
+              </div>
+              <div id="relatedDatasets" class="related-list"></div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section id="compareView" class="view">
+        <div id="comparePanel" class="compare-panel"></div>
+      </section>
+    </main>
+
+    <aside id="selectionDock" class="selection-dock" aria-live="polite"></aside>
+
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
